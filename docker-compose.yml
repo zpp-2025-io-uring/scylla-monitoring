@@ -1,0 +1,124 @@
+services:
+  alertmanager:
+    container_name: aalert
+    image: "prom/alertmanager:${ALERT_MANAGER_VERSION}"
+
+    ports:
+    - ${BIND_ADDRESS}${ALERTMANAGER_PORT}:9093
+    volumes:
+    - ${ALERT_MANAGER_RULE_CONFIG}:/etc/alertmanager/config.yml
+
+
+  grafana:
+    container_name: agraf
+    environment:
+    - GF_PANELS_DISABLE_SANITIZE_HTML=true
+    - GF_PATHS_PROVISIONING=/var/lib/grafana/provisioning
+    - GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS=scylladb-scylla-datasource
+    - GF_AUTH_BASIC_ENABLED=${GF_AUTH_BASIC_ENABLED}
+    - GF_AUTH_ANONYMOUS_ENABLED=${GF_AUTH_ANONYMOUS_ENABLED}
+    - GF_AUTH_ANONYMOUS_ORG_ROLE=${GF_AUTH_ANONYMOUS_ORG_ROLE}
+    - GF_SECURITY_ADMIN_PASSWORD=${GF_SECURITY_ADMIN_PASSWORD}
+    - GF_ANALYTICS_REPORTING_ENABLED=${ANALYTICS_REPORTING_ENABLED}
+    - GF_ANALYTICS_CHECK_FOR_UPDATES=${ANALYTICS_CHECK_FOR_UPDATES}
+    - GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES=${ANALYTICS_CHECK_FOR_PLUGIN_UPDATES}
+    - GF_SECURITY_ANGULAR_SUPPORT_ENABLED=${SECURITY_ANGULAR_SUPPORT_ENABLED}
+    - GF_SERVER_ENABLE_GZIP=${SERVER_ENABLE_GZIP}
+    - GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/var/lib/grafana/dashboards/ver_${SCYLLA_VERSION}/scylla-overview.${SCYLLA_VERSION}.json
+
+
+    image: grafana/grafana:${GRAFANA_VERSION}
+    ports:
+    - ${BIND_ADDRESS}${GRAFANA_PORT}:3000
+    user: 1000:1000
+    volumes:
+    - ./grafana/build:/var/lib/grafana/dashboards
+    - ./grafana/plugins:/var/lib/grafana/plugins
+    - ./grafana/provisioning:/var/lib/grafana/provisioning
+    #GRAFANA_VOLUMES
+    # - path/to/grafana/dir:/var/lib/grafana
+  loki:
+    command:
+    - --config.file=/mnt/config/loki-config.yaml
+    container_name: loki
+    image: grafana/loki:${LOKI_VERSION}
+
+    user: 1000:1000
+    ports:
+    - ${BIND_ADDRESS}${LOKI_PORT}:3100
+    volumes:
+    - ${LOKI_RULE_DIR}:/etc/loki/rules/fake:z
+    - ${LOKI_CONF_DIR}:/mnt/config:z
+    - ${LOKI_WALL_DIR}:/wal:z
+    
+  promotheus:
+    command:
+    - --config.file=/etc/prometheus/prometheus.yml
+    - --web.enable-lifecycle
+
+
+    
+    container_name: aprom
+    image: prom/prometheus:${PROMETHEUS_VERSION}
+    ports:
+    - ${BIND_ADDRESS}${PROMETHEUS_PORT}:9090
+    volumes:
+    - ./prometheus/build/prometheus.yml:/etc/prometheus/prometheus.yml
+    - ${SCYLLA_TARGET_FILE}
+    - ${PROMETHEUS_RULES}
+    - ${SCYLLA_MANGER_TARGET_FILE}
+    - ${NODE_TARGET_FILE}
+    - ${SCYLLA_MANGER_AGENT_TARGET_FILE}
+
+    # - path/to/data/dir:/prometheus/data
+  promtail:
+    command:
+    - --config.file=/etc/promtail/config.yml
+    container_name: promtail
+
+    image: grafana/promtail:${LOKI_VERSION}
+    ports:
+    - ${BIND_ADDRESS}1514:1514
+    - ${BIND_ADDRESS}9080:9080
+    volumes:
+    - ./loki/promtail/promtail_config.compose.yml:/etc/promtail/config.yml
+
+
+  scylla1:
+    image: scylladb/scylla:2026.1.0-rc1
+    ports:
+      - "49180:9180"
+      - "12345:10000"
+    command: --smp 3 --memory 1G --api-address 0.0.0.0 --seeds scylla1 --reactor-backend=epoll
+    restart: on-failure:2
+    healthcheck:
+      test: ["CMD-SHELL", "[ $$(nodetool statusgossip) = running ]"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  scylla2:
+    image: scylladb/scylla:2026.1.0-rc1
+    ports:
+      - "49181:9180"
+      - "12346:10000"
+    command: --smp 4 --memory 1G --api-address 0.0.0.0 --seeds scylla1 --reactor-backend=epoll
+    restart: on-failure:2
+    healthcheck:
+      test: ["CMD-SHELL", "[ $$(nodetool statusgossip) = running ]"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  cassandra:
+    image: scylladb/cassandra-stress:latest
+    command: write -node scylla1
+    depends_on:
+      scylla1:
+          condition: service_healthy
+      scylla2:
+          condition: service_healthy
+
+version: '3'

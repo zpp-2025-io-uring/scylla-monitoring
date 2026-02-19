@@ -1,0 +1,10 @@
+- targets:
+       - scylla1:9180
+  labels:
+       cluster: cluster1
+       dc: datacenter1
+- targets:
+       - scylla2:9180
+  labels:
+       cluster: cluster1
+       dc: datacenter1
