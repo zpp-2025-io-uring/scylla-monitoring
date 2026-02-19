@@ -114,7 +114,7 @@ services:
 
   cassandra:
     image: scylladb/cassandra-stress:latest
-    command: write -node scylla1
+    command: write n=1000000 -node scylla1, scylla2
     depends_on:
       scylla1:
           condition: service_healthy
