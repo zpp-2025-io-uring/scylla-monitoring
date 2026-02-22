@@ -57,6 +57,8 @@ services:
     #PROMETHEUS_USER_PERMISSIONS
     container_name: aprom
     image: prom/prometheus:${PROMETHEUS_VERSION}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
     - ${BIND_ADDRESS}${PROMETHEUS_PORT}:9090
     volumes:

@@ -1,0 +1,15 @@
+nodes:
+- api_port: 10000
+  ip: 127.0.0.70
+  native_transport_port: 9042
+  native_shard_aware_transport_port: 9142
+  name: node1
+  work_dir: ./workdir
+  extra_scylla_command_line_args: ["--cpuset", "4", "--reactor-backend=io_uring"]
+- api_port: 10001
+  ip: 127.0.0.71
+  native_transport_port: 9043
+  native_shard_aware_transport_port: 9143
+  name: node2
+  work_dir: ./workdir
+  extra_scylla_command_line_args: ["--cpuset", "5", "--reactor-backend=io_uring"]

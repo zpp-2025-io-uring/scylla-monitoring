@@ -1,6 +1,12 @@
 # List Scylla end points
 
 # An example with a single cluster and two DC
+# For local Docker setups you can use host.docker.internal to reach services on the host
+# - targets:
+#       - host.docker.internal
+#   labels:
+#       cluster: cluster1
+#       dc: dc1
 - targets:
        - 172.17.0.2
   labels:

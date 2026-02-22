@@ -1,0 +1,89 @@
+services:
+  grafana:
+    container_name: agraf
+    network_mode: host
+    environment:
+    - GF_PANELS_DISABLE_SANITIZE_HTML=true
+    - GF_PATHS_PROVISIONING=/var/lib/grafana/provisioning
+    - GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS=scylladb-scylla-datasource
+    # This is where you set Grafana security
+    - GF_AUTH_BASIC_ENABLED=false
+    - GF_AUTH_ANONYMOUS_ENABLED=true
+    - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+    - GF_SECURITY_ADMIN_PASSWORD=admin
+    # To set your home dashboard uncomment the following line, set VERSION to be your current version
+    #- GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/var/lib/grafana/dashboards/ver_VERSION/scylla-overview.VERSION.json
+    image: grafana/grafana:12.3.1
+    extra_hosts:
+        - host.docker.internal:host-gateway
+    ports:
+    - 3001:3000
+    user: 1000:1000
+    volumes:
+    - ./grafana/build:/var/lib/grafana/dashboards
+    - ./grafana/plugins:/var/lib/grafana/plugins
+    - ./grafana/provisioning:/var/lib/grafana/provisioning
+    # Uncomment the following line for grafana persistency
+    # - path/to/grafana/dir:/var/lib/grafana
+  loki:
+    command:
+    - --config.file=/mnt/config/loki-config.yaml
+    container_name: loki
+    network_mode: host
+    image: grafana/loki:3.6.3
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+    - ./loki/rules:/etc/loki/rules
+    - ./loki/conf:/mnt/config
+  promotheus:
+    network_mode: host
+
+    command:
+    - --config.file=/etc/prometheus/prometheus.yml
+    container_name: aprom
+    image: prom/prometheus:v3.8.1
+    extra_hosts:
+        - host.docker.internal:host-gateway
+    ports:
+    - 9091:9090
+    volumes:
+    - ./prometheus/build/prometheus.yml:/etc/prometheus/prometheus.yml
+    - ./prometheus/prom_rules/:/etc/prometheus/prom_rules/
+    # instead of the following three targets, you can place three files under one directory and mount that directory
+    # If you do, uncomment the following line and delete the three lines afterwards
+    #- /path/to/targets:/etc/scylla.d/prometheus/targets/
+    - ./prometheus/scylla_servers.yml:/etc/scylla.d/prometheus/targets/scylla_servers.yml:z
+    - ./prometheus/scylla_manager_servers.yml:/etc/scylla.d/prometheus/targets/scylla_manager_servers.yml:z
+    - ./prometheus/node_exporter_servers.yml:/etc/scylla.d/prometheus/targets/node_exporter_servers.yml:z
+
+  node_exporter:
+    image: quay.io/prometheus/node-exporter:latest
+    container_name: node_exporter
+    command:
+      - '--path.rootfs=/host'
+    network_mode: host
+    pid: host
+    restart: unless-stopped
+    volumes:
+      - '/:/host:ro,rslave'
+
+  # scyllamy1:
+  #   privileged: true
+  #   image: localhost/scylla-asymmetric:dev
+  #   ports:
+  #     - "59180:9180"
+  #     - "22345:10000"
+  #   command: --smp 3 --memory 1G --api-address 0.0.0.0 --seeds scyllamy1 --reactor-backend=io_uring
+
+  # scyllamy2:
+  #   image: localhost/scylla-asymmetric:dev
+  #   privileged: true
+  #   ports:
+  #     - "59181:9180"
+  #     - "22346:10000"
+  #   command: --smp 4 --memory 1G --api-address 0.0.0.0 --seeds scyllamy1 --reactor-backend=io_uring
+
+  # cassandra:
+  #   image: scylladb/cassandra-stress:latest
+  #   command: write -node scylla1
