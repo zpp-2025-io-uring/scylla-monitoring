@@ -1,0 +1,22 @@
+nodes:
+- api_port: 10000
+  ip: 127.0.0.70
+  native_transport_port: 9042
+  native_shard_aware_transport_port: 9142
+  name: node1
+  work_dir: ./workdir
+  extra_scylla_command_line_args: ["--reactor-backend=io_uring", "--cpuset=0-2"]
+# - api_port: 10001
+#   ip: 127.0.0.71
+#   native_transport_port: 9043
+#   native_shard_aware_transport_port: 9143
+#   name: node2
+#   work_dir: ./workdir
+#   extra_scylla_command_line_args: ["--reactor-backend=asymmetric_io_uring", "--cpuset=4-6", "--async-workers-cpuset=7"]
+# - api_port: 10002
+#   ip: 127.0.0.72
+#   native_transport_port: 9044
+#   native_shard_aware_transport_port: 9144
+#   name: node3
+#   work_dir: ./workdir
+#   extra_scylla_command_line_args: ["--reactor-backend=asymmetric_io_uring", "--cpuset=8-10", "--async-workers-cpuset=11"]
