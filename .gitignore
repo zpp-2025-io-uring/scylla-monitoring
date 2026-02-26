@@ -12,4 +12,3 @@ grafana/build/
 CURRENT_VERSION.sh
 packer-manifest.json
 workdirs/
-grafana/plugins

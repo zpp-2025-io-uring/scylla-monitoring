@@ -2,5 +2,4 @@
     cluster: cluster1
     dc: datacenter1
   targets:
-  - 127.0.0.70:9180
-  - 127.0.0.71:9180
+  - 127.0.0.80:9180
